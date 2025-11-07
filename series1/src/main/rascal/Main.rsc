@@ -88,13 +88,13 @@ int countHeuristicSlocFromAsts(list[Declaration] asts) =
 void printVolumeReportFromAsts(list[Declaration] asts, str label) {
   int fileCount = size(asts);
   int ploc = countPhysicalLocFromAsts(asts);
-  int sloc = countHeuristicSlocFromAsts(asts);
+  //int sloc = countHeuristicSlocFromAsts(asts);
 
   println("=== Volume Report ===");
   println("Project: <label>");
   println("Java files: <fileCount>");
   println("Physical LOC (all lines): <ploc>");
-  println("Heuristic SLOC (no blanks, no //): <sloc>");
+  //println("Heuristic SLOC (no blanks, no //): <sloc>");
 }
 
 // convenience wrapper if you want to call with a project location
