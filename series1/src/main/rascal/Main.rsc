@@ -76,8 +76,13 @@ tuple[int, list[str]] mostOccurringVariables(list[Declaration] asts){
 // ------------------------
 // Assignment 2 
 // Counting LOC
-int countPhysicalLocFromAsts(list[Declaration] asts) =
-    sum([ size(readFileLines(fileDecl.src)) | fileDecl <- asts ]);
+int countPhysicalLocFromAsts(list[Declaration] asts) {
+    int total = 0;
+    for (decl <- asts) {
+        total += size(readFileLines(decl.src));
+    }
+    return total;
+}
 
 bool isNoiseLine(str line) {
     str trimmedLine = trim(line);
