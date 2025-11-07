@@ -121,3 +121,162 @@ void printVolumeReportFromAsts(list[Declaration] asts, str label) {
 void printVolumeReport(list[Declaration] asts) {
     printVolumeReportFromAsts(asts, "AST input");
 }
+
+// Normaliseer code: verwijder whitespace, comments, maak lowercase
+str normalizeCode(list[str] lines) {
+    str normalized = "";
+    for (line <- lines) {
+        str trimmed = trim(line);
+        // Skip lege regels en comments
+        if (trimmed != "" && !startsWith(trimmed, "//") && !startsWith(trimmed, "/*") && !startsWith(trimmed, "*")) {
+            // Verwijder alle whitespace en maak lowercase voor vergelijking
+            normalized += toLowerCase(replaceAll(trimmed, " ", ""));
+        }
+    }
+    return normalized;
+}
+
+// Extract normaliseerde code blocks van minimaal minLines groot
+map[str normalized, list[tuple[loc location, int lineCount]] blocks] extractCodeBlocks(list[Declaration] asts, int minLines) {    
+    map[str, list[tuple[loc, int]]] blockMap = ();
+    
+    visit(asts) {
+        // Extract alle method bodies
+        case \method(_, _, _, _, _, _, Statement impl): {
+            if (impl.src?) {
+                try {
+                    list[str] lines = readFileLines(impl.src);
+                    int lineCount = size(lines);
+                    
+                    if (lineCount >= minLines) {
+                        str normalized = normalizeCode(lines);
+                        
+                        // Alleen toevoegen als genormaliseerde code niet leeg is
+                        if (size(normalized) > 0) {
+                            if (normalized in blockMap) {
+                                blockMap[normalized] += [<impl.src, lineCount>];
+                            } else {
+                                blockMap[normalized] = [<impl.src, lineCount>];
+                            }
+                        }
+                    }
+                } catch: {
+                    // Skip bestanden die niet gelezen kunnen worden
+                    println("Warning: could not read file at <impl.src>");
+                }
+            }
+        }
+        
+        // Extract constructors
+        case \constructor(_, _, _, _,  Statement impl): {
+            if (impl.src?) {
+                try {
+                    list[str] lines = readFileLines(impl.src);
+                    int lineCount = size(lines);
+                    
+                    if (lineCount >= minLines) {
+                        str normalized = normalizeCode(lines);
+                        
+                        if (size(normalized) > 0) {
+                            if (normalized in blockMap) {
+                                blockMap[normalized] += [<impl.src, lineCount>];
+                            } else {
+                                blockMap[normalized] = [<impl.src, lineCount>];
+                            }
+                        }
+                    }
+                } catch: {
+                    println("Warning: could not read file at <impl.src>");
+                }
+            }
+        }
+    }
+    
+    // Filter: behoud alleen blocks die minstens 2x voorkomen (= duplicaten)
+    return (h : blockMap[h] | h <- blockMap, size(blockMap[h]) >= 2);
+}
+
+
+// Bereken duplication percentage
+tuple[int duplicatedLines, int totalLines, real percentage] calculateDuplication(
+    list[Declaration] asts,
+    int minLines
+) {
+    map[str, list[tuple[loc, int]]] duplicates = extractCodeBlocks(asts, minLines);
+    
+    // Tel totaal aantal lijnen code
+    int totalLines = countPhysicalLocFromAsts(asts);
+    
+    // Tel gedupliceerde lijnen
+    int duplicatedLines = 0;
+    for (normalized <- duplicates) {
+        list[tuple[loc location, int lineCount]] blocks = duplicates[normalized];
+        int blockSize = blocks[0].lineCount;
+        int occurrences = size(blocks);
+        
+        // Tel alleen de extra kopieën (niet het origineel)
+        duplicatedLines += blockSize * (occurrences - 1);
+    }
+    
+    real percentage = totalLines > 0 ? (duplicatedLines * 100.0) / totalLines : 0.0;
+    
+    return <duplicatedLines, totalLines, percentage>;
+}
+
+// Print gedetailleerd duplication rapport
+void printDuplicationReport(list[Declaration] asts, int minLines) {
+    map[str, list[tuple[loc, int]]] duplicates = extractCodeBlocks(asts, minLines);
+    tuple[int dup, int total, real pct] stats = calculateDuplication(asts, minLines);
+    
+    println("\n=== Duplication Report ===");
+    println("Minimum block size: <minLines> lines");
+    println("Total LOC: <stats.total>");
+    println("Duplicated LOC: <stats.dup>");
+    println("Duplication percentage: <round(stats.pct, 0.01)>%");
+    println("\nNumber of duplicate blocks found: <size(duplicates)>");
+    
+    // SIG rating (gebaseerd op ISO/IEC 25010 maintainability)
+    str rating = getDuplicationRating(stats.pct);
+    println("SIG Rating: <rating>");
+    
+    println("\n--- Duplicate Block Details ---");
+    int blockNum = 1;
+    for (normalized <- duplicates) {
+        list[tuple[loc location, int lineCount]] blocks = duplicates[normalized];
+        println("\nDuplicate Block #<blockNum>:");
+        println("  Occurrences: <size(blocks)>");
+        println("  Block size: <blocks[0].lineCount> lines");
+        println("  Locations:");
+        for (block <- blocks) {
+            println("    - <block.location>");
+        }
+        blockNum += 1;
+    }
+}
+
+// SIG Maintainability rating voor duplication
+str getDuplicationRating(real percentage) {
+    if (percentage <= 3.0) return "++ (excellent)";
+    if (percentage <= 5.0) return "+ (good)";
+    if (percentage <= 10.0) return "o (moderate)";
+    if (percentage <= 20.0) return "- (poor)";
+    return "-- (very poor)";
+}
+
+// Convenience wrapper voor project location
+void printDuplicationReportFromProject(loc projectLocation) {
+    minLines = 6;
+    list[Declaration] asts = getASTs(projectLocation);
+    printDuplicationReport(asts, minLines);
+}
+
+// Gecombineerd rapport: volume + duplication
+void printFullQualityReport(loc projectLocation) {
+    list[Declaration] asts = getASTs(projectLocation);
+    
+    // Volume metrics
+    printVolumeReportFromAsts(asts, "<projectLocation>");
+    
+    // Duplication metrics
+    printDuplicationReport(asts, 6);
+}
