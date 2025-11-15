@@ -34,7 +34,7 @@ int getNumberOfInterfaces(list[Declaration] asts){
 
 
 // Assignments 
-// Problem 1
+// Series 0
 int getNumberOfForLoops(list[Declaration] asts){
     int count = 0;
 
@@ -63,19 +63,8 @@ tuple[int, list[str]] mostOccurringVariables(list[Declaration] asts){
     return <maximum, toList(invert(counter)[maximum])>;
 }
 
-// list[loc] findNullReturned(list[Declaration] asts){
-//     list[loc] locs = [];map
-
-//     visit (asts) {
-//         case \return(Expression expr):
-//             if(expr is \null) locs += expr.src;
-//     }
-    
-//     return locs;
-// }
-
 // ------------------------
-// Assignment 2 
+// Series 1
 // Counting LOC
 int countPhysicalLocFromAsts(list[Declaration] asts) {
     int total = 0;
@@ -128,14 +117,17 @@ void printVolumeReport(list[Declaration] asts) {
 // Normalise code: remove whitespace, comments, and put in lowercase
 str normalizeCode(list[str] lines) {
     str normalized = "";
+
     for (line <- lines) {
         str trimmed = trim(line);
+
         // Skip empty lines and comments
         if (trimmed != "" && !startsWith(trimmed, "//") && !startsWith(trimmed, "/*") && !startsWith(trimmed, "*")) {
             // Remove all whitespace and make lowercase for comparison
             normalized += toLowerCase(replaceAll(trimmed, " ", ""));
         }
     }
+
     return normalized;
 }
 
@@ -156,15 +148,12 @@ map[str normalized, list[tuple[loc location, int lineCount]] blocks] extractCode
                         
                         // Only add if normalised code isn't empty
                         if (size(normalized) > 0) {
-                            if (normalized in blockMap) {
-                                blockMap[normalized] += [<impl.src, lineCount>];
-                            } else {
-                                blockMap[normalized] = [<impl.src, lineCount>];
-                            }
+                            if (normalized in blockMap) blockMap[normalized] += [<impl.src, lineCount>];
+                            else blockMap[normalized] = [<impl.src, lineCount>];
                         }
                     }
-                } catch: {
-
+                } 
+                catch: {
                     // Skipt files that can't be read
                     println("Warning: could not read file at <impl.src>");
                 }
@@ -182,14 +171,12 @@ map[str normalized, list[tuple[loc location, int lineCount]] blocks] extractCode
                         str normalized = normalizeCode(lines);
                         
                         if (size(normalized) > 0) {
-                            if (normalized in blockMap) {
-                                blockMap[normalized] += [<impl.src, lineCount>];
-                            } else {
-                                blockMap[normalized] = [<impl.src, lineCount>];
-                            }
+                            if (normalized in blockMap) blockMap[normalized] += [<impl.src, lineCount>];
+                            else blockMap[normalized] = [<impl.src, lineCount>];
                         }
                     }
-                } catch: {
+                } 
+                catch: {
                     println("Warning: could not read file at <impl.src>");
                 }
             }
@@ -205,7 +192,8 @@ map[str normalized, list[tuple[loc location, int lineCount]] blocks] extractCode
 tuple[int duplicatedLines, int totalLines, real percentage] calculateDuplication(
     list[Declaration] asts,
     int minLines
-) {
+    ) {
+
     map[str, list[tuple[loc, int]]] duplicates = extractCodeBlocks(asts, minLines);
     
     // Count total amount of lines of code
@@ -236,7 +224,7 @@ void printDuplicationReport(list[Declaration] asts, int minLines) {
     println("Minimum block size: <minLines> lines");
     println("Total LOC: <stats.total>");
     println("Duplicated LOC: <stats.dup>");
-    println("Duplication percentage: <round(stats.pct, 0.01)>%");
+    println("Duplication percentage: <stats.pct>%"); // Changed your rounding code -Raihan 
     println("\nNumber of duplicate blocks found: <size(duplicates)>");
     
     // SIG rating (based on ISO/IEC 25010 maintainability)
