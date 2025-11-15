@@ -4,11 +4,12 @@ import lang::java::m3::Core;
 import lang::java::m3::AST;
 
 import IO;
+
 import List;
 import Set;
 import String;
+
 import Map;
-import util::Math;
 
 int main(int testArgument=0) {
     println("argument: <testArgument>");
@@ -19,13 +20,14 @@ list[Declaration] getASTs(loc projectLocation) {
     M3 model = createM3FromMavenProject(projectLocation);
     list[Declaration] asts = [createAstFromFile(f, true)
         | f <- files(model.containment), isCompilationUnit(f)];
+
     return asts;
 }
 
 int getNumberOfInterfaces(list[Declaration] asts){
     int interfaces = 0;
     visit(asts){
-    case \interface(_, _, _, _, _, _): interfaces += 1;
+        case \interface(_, _, _, _, _, _): interfaces += 1;
     }
     return interfaces;
 }
@@ -88,7 +90,7 @@ bool isNoiseLine(str line) {
 
     // if trimmedLine is equal to empty or commented line, ignore line
     if (trimmedLine == "") return true;
-    else if (trimmedLine == "//") return true;
+    if (startsWith(trimmedLine, "//")) return true;
     else return false;
 }
 
@@ -121,26 +123,28 @@ void printVolumeReport(list[Declaration] asts) {
     printVolumeReportFromAsts(asts, "AST input");
 }
 
-// Normaliseer code: verwijder whitespace, comments, maak lowercase
+//!!!!!!!!!!!!!!!!!!
+// Ashrafs code
+// Normalise code: remove whitespace, comments, and put in lowercase
 str normalizeCode(list[str] lines) {
     str normalized = "";
     for (line <- lines) {
         str trimmed = trim(line);
-        // Skip lege regels en comments
+        // Skip empty lines and comments
         if (trimmed != "" && !startsWith(trimmed, "//") && !startsWith(trimmed, "/*") && !startsWith(trimmed, "*")) {
-            // Verwijder alle whitespace en maak lowercase voor vergelijking
+            // Remove all whitespace and make lowercase for comparison
             normalized += toLowerCase(replaceAll(trimmed, " ", ""));
         }
     }
     return normalized;
 }
 
-// Extract normaliseerde code blocks van minimaal minLines groot
+// Extract normalised code blocks of minimal minLines big
 map[str normalized, list[tuple[loc location, int lineCount]] blocks] extractCodeBlocks(list[Declaration] asts, int minLines) {    
     map[str, list[tuple[loc, int]]] blockMap = ();
     
     visit(asts) {
-        // Extract alle method bodies
+        // Extract all method bodies
         case \method(_, _, _, _, _, _, Statement impl): {
             if (impl.src?) {
                 try {
@@ -150,7 +154,7 @@ map[str normalized, list[tuple[loc location, int lineCount]] blocks] extractCode
                     if (lineCount >= minLines) {
                         str normalized = normalizeCode(lines);
                         
-                        // Alleen toevoegen als genormaliseerde code niet leeg is
+                        // Only add if normalised code isn't empty
                         if (size(normalized) > 0) {
                             if (normalized in blockMap) {
                                 blockMap[normalized] += [<impl.src, lineCount>];
@@ -160,7 +164,8 @@ map[str normalized, list[tuple[loc location, int lineCount]] blocks] extractCode
                         }
                     }
                 } catch: {
-                    // Skip bestanden die niet gelezen kunnen worden
+
+                    // Skipt files that can't be read
                     println("Warning: could not read file at <impl.src>");
                 }
             }
@@ -191,29 +196,29 @@ map[str normalized, list[tuple[loc location, int lineCount]] blocks] extractCode
         }
     }
     
-    // Filter: behoud alleen blocks die minstens 2x voorkomen (= duplicaten)
+    // Filter: keep only blocks that appear twice (= duplicates)
     return (h : blockMap[h] | h <- blockMap, size(blockMap[h]) >= 2);
 }
 
 
-// Bereken duplication percentage
+// Calculate duplication percentage
 tuple[int duplicatedLines, int totalLines, real percentage] calculateDuplication(
     list[Declaration] asts,
     int minLines
 ) {
     map[str, list[tuple[loc, int]]] duplicates = extractCodeBlocks(asts, minLines);
     
-    // Tel totaal aantal lijnen code
+    // Count total amount of lines of code
     int totalLines = countPhysicalLocFromAsts(asts);
     
-    // Tel gedupliceerde lijnen
+    // Count duplicated lines
     int duplicatedLines = 0;
     for (normalized <- duplicates) {
         list[tuple[loc location, int lineCount]] blocks = duplicates[normalized];
         int blockSize = blocks[0].lineCount;
         int occurrences = size(blocks);
         
-        // Tel alleen de extra kopieën (niet het origineel)
+        // Count only the extra copies (not the original)
         duplicatedLines += blockSize * (occurrences - 1);
     }
     
@@ -222,7 +227,7 @@ tuple[int duplicatedLines, int totalLines, real percentage] calculateDuplication
     return <duplicatedLines, totalLines, percentage>;
 }
 
-// Print gedetailleerd duplication rapport
+// Print the detailed duplication report
 void printDuplicationReport(list[Declaration] asts, int minLines) {
     map[str, list[tuple[loc, int]]] duplicates = extractCodeBlocks(asts, minLines);
     tuple[int dup, int total, real pct] stats = calculateDuplication(asts, minLines);
@@ -234,7 +239,7 @@ void printDuplicationReport(list[Declaration] asts, int minLines) {
     println("Duplication percentage: <round(stats.pct, 0.01)>%");
     println("\nNumber of duplicate blocks found: <size(duplicates)>");
     
-    // SIG rating (gebaseerd op ISO/IEC 25010 maintainability)
+    // SIG rating (based on ISO/IEC 25010 maintainability)
     str rating = getDuplicationRating(stats.pct);
     println("SIG Rating: <rating>");
     
@@ -253,7 +258,7 @@ void printDuplicationReport(list[Declaration] asts, int minLines) {
     }
 }
 
-// SIG Maintainability rating voor duplication
+// SIG Maintainability rating for duplication
 str getDuplicationRating(real percentage) {
     if (percentage <= 3.0) return "++ (excellent)";
     if (percentage <= 5.0) return "+ (good)";
@@ -262,14 +267,14 @@ str getDuplicationRating(real percentage) {
     return "-- (very poor)";
 }
 
-// Convenience wrapper voor project location
+// Convenience wrapper for project location
 void printDuplicationReportFromProject(loc projectLocation) {
     minLines = 6;
     list[Declaration] asts = getASTs(projectLocation);
     printDuplicationReport(asts, minLines);
 }
 
-// Gecombineerd rapport: volume + duplication
+// Combined report: volume + duplication
 void printFullQualityReport(loc projectLocation) {
     list[Declaration] asts = getASTs(projectLocation);
     
