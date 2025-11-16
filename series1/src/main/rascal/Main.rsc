@@ -12,7 +12,6 @@ import String;
 import Map;
 
 import metrics::Volume;
-import metrics::UnitSize;
 
 int main(int testArgument=0) {
     println("argument: <testArgument>");
@@ -29,103 +28,6 @@ list[Declaration] getASTs(loc projectLocation) {
 
 // ------------------------
 // Series 1
-
-// Normalise code: remove whitespace, comments, and put in lowercase
-str normalizeCode(list[str] lines) {
-    str normalized = "";
-    for (line <- lines) {
-        str trimmed = trim(line);
-        // Skip empty lines and comments
-        if (trimmed != "" && !startsWith(trimmed, "//") && !startsWith(trimmed, "/*") && !startsWith(trimmed, "*")) {
-            // Remove all whitespace and make lowercase for comparison
-            normalized += toLowerCase(replaceAll(trimmed, " ", ""));
-        }
-    }
-
-    return normalized;
-}
-
-// Extract normalised code blocks of minimal minLines big
-map[str normalized, list[tuple[loc location, int lineCount]] blocks] extractCodeBlocks(list[Declaration] asts, int minLines) {    
-    map[str, list[tuple[loc, int]]] blockMap = ();
-    visit(asts) {
-        // Extract all method bodies
-        case \method(_, _, _, _, _, _, Statement impl): {
-            if (impl.src?) {
-                try {
-                    list[str] lines = readFileLines(impl.src);
-                    int lineCount = size(lines);
-                    
-                    if (lineCount >= minLines) {
-                        str normalized = normalizeCode(lines);
-                        // Only add if normalised code isn't empty
-                        if (size(normalized) > 0) {
-                            if (normalized in blockMap) blockMap[normalized] += [<impl.src, lineCount>];
-                            else blockMap[normalized] = [<impl.src, lineCount>];
-                        }
-                    }
-                } 
-                catch: {
-                    // Skip files that can't be read
-               
-                    println("Warning: could not read file at <impl.src>");
-                }
-            }
-        }
-        
-        // Extract constructors
-        case \constructor(_, _, _, _,  Statement impl): {
-            if (impl.src?) {
-                try {
-               
-                    list[str] lines = readFileLines(impl.src);
-                    int lineCount = size(lines);
-                    if (lineCount >= minLines) {
-                        str normalized = normalizeCode(lines);
-                        if (size(normalized) > 0) {
-                            if (normalized in blockMap) blockMap[normalized] += [<impl.src, lineCount>];
-                            else blockMap[normalized] = [<impl.src, lineCount>];
-                        }
-                    }
-                } 
-                catch: {
-                    println("Warning: could not read file at <impl.src>");
-                }
-            }
-        }
-    }
-    
-    // Filter: keep only blocks that appear twice (= duplicates)
-    return (h : blockMap[h] | h <- blockMap, size(blockMap[h]) >= 2);
-}
-
-
-// Calculate duplication percentage
-tuple[int duplicatedLines, int totalLines, real percentage] calculateDuplication(
-    list[Declaration] asts,
-    int minLines
-    ){
-
-    map[str, list[tuple[loc, int]]] duplicates = extractCodeBlocks(asts, minLines);
-    // Count total amount of lines of code
-    int totalLines = countPhysicalLocFromAsts(asts);
-    // Count duplicated lines
-    int duplicatedLines = 0;
-    for (normalized <- duplicates) {
-        list[tuple[loc location, int lineCount]] blocks = duplicates[normalized];
-        int blockSize = blocks[0].lineCount;
-        int occurrences = size(blocks);
-        
-        // Count only the extra copies (not the original)
-        duplicatedLines += blockSize * (occurrences - 1);
-    }
-    
-    real percentage = totalLines > 0 ?
-    (duplicatedLines * 100.0) / totalLines : 0.0;
-    
-    return <duplicatedLines, totalLines, percentage>;
-}
-
 // Unit Size
 map[loc, int] calculateUnitSize(list[Declaration] asts) {
     map[loc, int] unitSizes = ();
@@ -189,36 +91,27 @@ void printUnitSizeReportFromAsts(list[Declaration] asts) {
     println("SIG Rating: <rating>");
 }
 
-// SIG Maintainability rating for duplication
-str getDuplicationRating(real percentage) {
-    if (percentage <= 3.0) return "++ (excellent)";
-    if (percentage <= 5.0) return "+ (good)";
-    if (percentage <= 10.0) return "o (moderate)";
-    if (percentage <= 20.0) return "- (poor)";
-    return "-- (very poor)";
-}
 
-// Print the detailed duplication report
-void printDuplicationReport(list[Declaration] asts, int minLines) {
-    map[str, list[tuple[loc, int]]] duplicates = extractCodeBlocks(asts, minLines);
-    tuple[int dup, int total, real pct] stats = calculateDuplication(asts, minLines);
-    
-    println("\n=== Duplication Report ===");
-    println("Minimum block size: <minLines> lines");
-    println("Total LOC: <stats.total>");
-    println("Duplicated LOC: <stats.dup>");
-    println("Duplication percentage: <stats.pct>%");
-    println("\nNumber of duplicate blocks found: <size(duplicates)>");
-    // SIG rating (based on ISO/IEC 25010 maintainability)
-    str rating = getDuplicationRating(stats.pct);
-    println("SIG Rating: <rating>");
-    println("\n--- Duplicate Block Details ---");
-}
 
-void printDuplicationReportFromAsts(list[Declaration] asts) {
-    minLines = 1;
-    printDuplicationReport(asts, minLines);
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // Helper function: Count logical AND (&&) and OR (||) operators
 int countLogicalOperators(\Expression exp) {
@@ -335,6 +228,149 @@ void printUnitComplexityReportFromAsts(list[Declaration] asts) {
     println("Risk Profile (<totalUnits> CC <riskThreshold>): <riskyUnits> (<riskPct>%)");
     println("SIG Rating: <rating>");
 }
+
+
+
+
+
+
+
+
+
+
+
+
+// Duplication Code Feature
+// Normalise code: remove whitespace, comments, and put in lowercase
+str normalizeCode(list[str] lines) {
+    str normalized = "";
+    for (line <- lines) {
+        str trimmed = trim(line);
+        // Skip empty lines and comments
+        if (trimmed != "" && !startsWith(trimmed, "//") && !startsWith(trimmed, "/*") && !startsWith(trimmed, "*")) {
+            // Remove all whitespace and make lowercase for comparison
+            normalized += toLowerCase(replaceAll(trimmed, " ", ""));
+        }
+    }
+
+    return normalized;
+}
+
+// Extract normalised code blocks of minimal minLines big
+map[str normalized, list[tuple[loc location, int lineCount]] blocks] extractCodeBlocks(list[Declaration] asts, int minLines) {    
+    map[str, list[tuple[loc, int]]] blockMap = ();
+    visit(asts) {
+        // Extract all method bodies
+        case \method(_, _, _, _, _, _, Statement impl): {
+            if (impl.src?) {
+                try {
+                    list[str] lines = readFileLines(impl.src);
+                    int lineCount = size(lines);
+                    
+                    if (lineCount >= minLines) {
+                        str normalized = normalizeCode(lines);
+                        // Only add if normalised code isn't empty
+                        if (size(normalized) > 0) {
+                            if (normalized in blockMap) blockMap[normalized] += [<impl.src, lineCount>];
+                            else blockMap[normalized] = [<impl.src, lineCount>];
+                        }
+                    }
+                } 
+                catch: {
+                    // Skip files that can't be read
+               
+                    println("Warning: could not read file at <impl.src>");
+                }
+            }
+        }
+        
+        // Extract constructors
+        case \constructor(_, _, _, _,  Statement impl): {
+            if (impl.src?) {
+                try {
+               
+                    list[str] lines = readFileLines(impl.src);
+                    int lineCount = size(lines);
+                    if (lineCount >= minLines) {
+                        str normalized = normalizeCode(lines);
+                        if (size(normalized) > 0) {
+                            if (normalized in blockMap) blockMap[normalized] += [<impl.src, lineCount>];
+                            else blockMap[normalized] = [<impl.src, lineCount>];
+                        }
+                    }
+                } 
+                catch: {
+                    println("Warning: could not read file at <impl.src>");
+                }
+            }
+        }
+    }
+    
+    // Filter: keep only blocks that appear twice (= duplicates)
+    return (h : blockMap[h] | h <- blockMap, size(blockMap[h]) >= 2);
+}
+
+
+// Calculate duplication percentage
+tuple[int duplicatedLines, int totalLines, real percentage] calculateDuplication(
+    list[Declaration] asts,
+    int minLines
+    ){
+
+    map[str, list[tuple[loc, int]]] duplicates = extractCodeBlocks(asts, minLines);
+    // Count total amount of lines of code
+    int totalLines = countPhysicalLocFromAsts(asts);
+    // Count duplicated lines
+    int duplicatedLines = 0;
+    for (normalized <- duplicates) {
+        list[tuple[loc location, int lineCount]] blocks = duplicates[normalized];
+        int blockSize = blocks[0].lineCount;
+        int occurrences = size(blocks);
+        
+        // Count only the extra copies (not the original)
+        duplicatedLines += blockSize * (occurrences - 1);
+    }
+    
+    real percentage = totalLines > 0 ?
+    (duplicatedLines * 100.0) / totalLines : 0.0;
+    
+    return <duplicatedLines, totalLines, percentage>;
+}
+
+// SIG Maintainability rating for duplication
+str getDuplicationRating(real percentage) {
+    if (percentage <= 3.0) return "++ (excellent)";
+    if (percentage <= 5.0) return "+ (good)";
+    if (percentage <= 10.0) return "o (moderate)";
+    if (percentage <= 20.0) return "- (poor)";
+    return "-- (very poor)";
+}
+
+
+// Print the detailed duplication report
+void printDuplicationReport(list[Declaration] asts, int minLines) {
+    map[str, list[tuple[loc, int]]] duplicates = extractCodeBlocks(asts, minLines);
+    tuple[int dup, int total, real pct] stats = calculateDuplication(asts, minLines);
+    
+    println("\n=== Duplication Report ===");
+    println("Minimum block size: <minLines> lines");
+    println("Total LOC: <stats.total>");
+    println("Duplicated LOC: <stats.dup>");
+    println("Duplication percentage: <stats.pct>%");
+    println("\nNumber of duplicate blocks found: <size(duplicates)>");
+    // SIG rating (based on ISO/IEC 25010 maintainability)
+    str rating = getDuplicationRating(stats.pct);
+    println("SIG Rating: <rating>");
+    println("\n--- Duplicate Block Details ---");
+}
+
+void printDuplicationReportFromAsts(list[Declaration] asts) {
+    minLines = 6; // SIG: fragements >= 6 LOC according to doc
+    printDuplicationReport(asts, minLines);
+}
+
+
+
 
 
 // Combined report: volume + unit size + unit complexity + duplication
