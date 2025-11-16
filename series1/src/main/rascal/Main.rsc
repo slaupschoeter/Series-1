@@ -38,12 +38,10 @@ map[loc, int] calculateUnitSize(list[Declaration] asts) {
             if (impl.src?) unitSizes[impl.src] = size(readFileLines(impl.src));
         }
         
-        // Handle constructors with a statement body (impl)
         case \constructor(_, _, _, _, Statement impl): {
             if (impl.src?) unitSizes[impl.src] = size(readFileLines(impl.src));
         }
         
-        // Ignore abstract methods or interfaces which have no body/src location
     }
     
     return unitSizes;
@@ -61,13 +59,16 @@ real calculateAverageUnitSize(map[loc location, int values] unitSizes) {
 
 // SIG Maintainability rating for Unit Size
 str getUnitSizeRating(real avgLoc) {
-    // SIG thresholds for LOC are based on industry standards
-    if (avgLoc <= 10.0) return "++ (excellent)";
-    if (avgLoc <= 20.0) return "+ (good)";
-    if (avgLoc <= 30.0) return "o (moderate)";
-    if (avgLoc <= 40.0) return "- (poor)";
+    // SIG thresholds for LOC 
+    if (avgLoc <= 15.0) return "++ (excellent)";
+    if (avgLoc <= 30.0) return "+ (good)";
+    if (avgLoc <= 60.0) return "o (moderate)";
+    if (avgLoc >= 61.0) return "- (poor)";
     return "-- (very poor)";
 }
+
+
+
 
 // Print the Unit Size report
 void printUnitSizeReportFromAsts(list[Declaration] asts) {
@@ -91,8 +92,63 @@ void printUnitSizeReportFromAsts(list[Declaration] asts) {
     println("SIG Rating: <rating>");
 }
 
+void NEWWWWprintUnitSizeReportFromAsts(list[Declaration] asts) {
+    map[loc, int] unitSizes = calculateUnitSize(asts);
+    int totalUnits = size(unitSizes);
 
+    if (totalUnits == 0) {
+        println("\n=== Unit Size Report ===");
+        println("No units found.");
+        return;
+    }
 
+    // Total LOC over all units
+    int totalLoc = 0;
+
+    // LOC in units above thresholds (SIG-style)
+    int locAbove15 = 0;
+    int locAbove30 = 0;
+    int locAbove60 = 0;
+
+    for (loc u <- unitSizes) {
+        int size = unitSizes[u];
+        totalLoc += size;
+
+        if (size > 15) locAbove15 += size;
+        if (size > 30) locAbove30 += size;
+        if (size > 60) locAbove60 += size;
+    }
+
+    real avgLoc = (totalLoc * 1.0) / totalUnits;
+
+    // Percentages of LOC (SIG-style)
+    real pctLocAbove15 = totalLoc > 0 ? (locAbove15 * 100.0) / totalLoc : 0.0;
+    real pctLocAbove30 = totalLoc > 0 ? (locAbove30 * 100.0) / totalLoc : 0.0;
+    real pctLocAbove60 = totalLoc > 0 ? (locAbove60 * 100.0) / totalLoc : 0.0;
+
+    bool ok15 = pctLocAbove15 <= 47.1;
+    bool ok30 = pctLocAbove30 <= 23.1;
+    bool ok60 = pctLocAbove60 <= 8.3;
+
+    str rating = getUnitSizeRating(avgLoc);
+
+    println("\n=== TESTTTTTTTTTUnit Size Report ===");
+    println("Total Units (Methods/Constructors): <totalUnits>");
+    println("Total LOC in units: <totalLoc>");
+    println("Average Unit Size (LOC): <avgLoc>");
+
+    println("\n--- SIG Unit Size Risk Profile (Percentage of LOC) ---");
+    println("\> 15 LOC: <pctLocAbove15>%  (LOC in such units: <locAbove15>)");
+    println("\> 30 LOC: <pctLocAbove30>%  (LOC in such units: <locAbove30>)");
+    println("\> 60 LOC: <pctLocAbove60>%  (LOC in such units: <locAbove60>)");
+
+    println("\n--- SIG 4 STAR Compliance Check ---");
+    println("\> 15 LOC (should be \<= 47.1%): <pctLocAbove15>%  -\> <ok15>");
+    println("\> 30 LOC (should be \<= 23.1%): <pctLocAbove30>%  -\> <ok30>");
+    println("\> 60 LOC (should be \<= 8.3%):  <pctLocAbove60>%  -\> <ok60>");
+
+    println("\nSIG-inspired Rating (based on avg LOC): <rating>");
+}
 
 
 
@@ -379,8 +435,9 @@ void printFullQualityReportFromAsts(list[Declaration] asts, str label = "Project
     printVolumeReportFromAsts(asts, label);
     
     // Unit Size
-    printUnitSizeReportFromAsts(asts);
-    
+    // oldPrintUnitSizeReportFromAsts(asts);
+    NEWWWWprintUnitSizeReportFromAsts(asts);
+
     // Unit Complexity
     printUnitComplexityReportFromAsts(asts);
     
