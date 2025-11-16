@@ -174,16 +174,12 @@ map[loc, int] calculateUnitSize(list[Declaration] asts) {
     visit(asts) {
         // Handle methods with a statement body (impl)
         case \method(_, _, _, _, _, _, Statement impl): {
-            if (impl.src?) {
-                unitSizes[impl.src] = size(readFileLines(impl.src));
-            }
+            if (impl.src?) unitSizes[impl.src] = size(readFileLines(impl.src));
         }
         
         // Handle constructors with a statement body (impl)
         case \constructor(_, _, _, _, Statement impl): {
-            if (impl.src?) {
-                unitSizes[impl.src] = size(readFileLines(impl.src));
-            }
+            if (impl.src?) unitSizes[impl.src] = size(readFileLines(impl.src));
         }
         
         // Ignore abstract methods or interfaces which have no body/src location
@@ -223,9 +219,7 @@ void printUnitSizeReportFromAsts(list[Declaration] asts) {
     int riskThreshold = 60; 
     int riskyUnits = 0;
     for (loc unitLoc <- unitSizes) {
-        if (unitSizes[unitLoc] > riskThreshold) {
-            riskyUnits += 1;
-        }
+        if (unitSizes[unitLoc] > riskThreshold) riskyUnits += 1;
     }
     real riskPct = (totalUnits > 0) ? (riskyUnits * 100.0) / totalUnits : 0.0;
     
@@ -328,16 +322,12 @@ map[loc, int] calculateUnitComplexity(list[Declaration] asts) {
     visit(asts) {
         // Handle methods with a statement body (impl)
         case \method(_, _, _, _, _, _, Statement impl): {
-            if (impl.src?) {
-                unitComplexities[impl.src] = calculateCyclomaticComplexity(impl);
-            }
+            if (impl.src?) unitComplexities[impl.src] = calculateCyclomaticComplexity(impl);
         }
         
         // Handle constructors with a statement body (impl)
         case \constructor(_, _, _, _, Statement impl): {
-            if (impl.src?) {
-                unitComplexities[impl.src] = calculateCyclomaticComplexity(impl);
-            }
+            if (impl.src?) unitComplexities[impl.src] = calculateCyclomaticComplexity(impl);
         }
     }
     
@@ -375,9 +365,8 @@ void printUnitComplexityReportFromAsts(list[Declaration] asts) {
     int riskThreshold = 15; 
     int riskyUnits = 0;
     for (loc unitLoc <- unitComplexities) {
-        if (unitComplexities[unitLoc] > riskThreshold) {
-            riskyUnits += 1;
-        }
+        if (unitComplexities[unitLoc] > riskThreshold) riskyUnits += 1;
+        
     }
     real riskPct = (totalUnits > 0) ? (riskyUnits * 100.0) / totalUnits : 0.0;
     
@@ -397,7 +386,7 @@ void printFullQualityReportFromAsts(list[Declaration] asts, str label = "Project
     // Unit Size
     printUnitSizeReportFromAsts(asts);
     
-    // Unit Complexity (New)
+    // Unit Complexity
     printUnitComplexityReportFromAsts(asts);
     
     // Duplication
