@@ -154,7 +154,7 @@ map[str normalized, list[tuple[loc location, int lineCount]] blocks] extractCode
                     }
                 } 
                 catch: {
-                    // Skipt files that can't be read
+                    // Skip files that can't be read
                     println("Warning: could not read file at <impl.src>");
                 }
             }
@@ -192,7 +192,7 @@ map[str normalized, list[tuple[loc location, int lineCount]] blocks] extractCode
 tuple[int duplicatedLines, int totalLines, real percentage] calculateDuplication(
     list[Declaration] asts,
     int minLines
-    ) {
+    ){
 
     map[str, list[tuple[loc, int]]] duplicates = extractCodeBlocks(asts, minLines);
     
@@ -255,20 +255,16 @@ str getDuplicationRating(real percentage) {
     return "-- (very poor)";
 }
 
-// Convenience wrapper for project location
-void printDuplicationReportFromProject(loc projectLocation) {
-    minLines = 6;
-    list[Declaration] asts = getASTs(projectLocation);
+void printDuplicationReportFromAsts(list[Declaration] asts) {
+    minLines = 6; // Broer wats dit voor variable name hahaha, geen idee wat het doet -Raihan
     printDuplicationReport(asts, minLines);
 }
 
 // Combined report: volume + duplication
-void printFullQualityReport(loc projectLocation) {
-    list[Declaration] asts = getASTs(projectLocation);
-    
-    // Volume metrics
-    printVolumeReportFromAsts(asts, "<projectLocation>");
-    
-    // Duplication metrics
-    printDuplicationReport(asts, 6);
+void printFullQualityReportFromAsts(list[Declaration] asts, str label = "Project") {
+    // Volume
+    printVolumeReportFromAsts(asts, label);
+
+    // Duplication
+    printDuplicationReportFromAsts(asts);
 }
