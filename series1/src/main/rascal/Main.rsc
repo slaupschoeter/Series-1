@@ -28,12 +28,16 @@ list[Declaration] getASTs(loc projectLocation) {
 
 // ------------------------
 // Series 1
+// ------------------------
+
+// ------------------------
 // Unit Size
+// ------------------------
 map[loc, int] calculateUnitSize(list[Declaration] asts) {
     map[loc, int] unitSizes = ();
     // Visit all method and constructor implementations
     visit(asts) {
-        // Handle methods with a statement body (impl)
+        // Handle methods with a statement body
         case \method(_, _, _, _, _, _, Statement impl): {
             if (impl.src?) unitSizes[impl.src] = size(readFileLines(impl.src));
         }
@@ -41,25 +45,25 @@ map[loc, int] calculateUnitSize(list[Declaration] asts) {
         case \constructor(_, _, _, _, Statement impl): {
             if (impl.src?) unitSizes[impl.src] = size(readFileLines(impl.src));
         }
-        
     }
     
     return unitSizes;
 }
 
-// Additional function to calculate the average unit size
+// Additional function to calculate the average unit size - niet echt nodig voor SIG 
 real calculateAverageUnitSize(map[loc location, int values] unitSizes) {
     if (size(unitSizes) == 0) return 0.0;
-    // sum(map.values) is a shorthand for summing all values in a map
-    int totalLoc = sum(unitSizes.values);
-    int totalUnits = size(unitSizes);
-    
-    return (totalLoc * 1.0) / totalUnits;
+
+    else {
+        int totalLoc = sum(unitSizes.values);
+        int totalUnits = size(unitSizes);
+        
+        return (totalLoc * 1.0) / totalUnits;
+    }
 }
 
-// SIG Maintainability rating for Unit Size
 str getUnitSizeRating(real avgLoc) {
-    // SIG thresholds for LOC 
+    // SIG thresholds for LOC - staat in de SIG doc 
     if (avgLoc <= 15.0) return "++ (excellent)";
     if (avgLoc <= 30.0) return "+ (good)";
     if (avgLoc <= 60.0) return "o (moderate)";
@@ -67,32 +71,7 @@ str getUnitSizeRating(real avgLoc) {
     return "-- (very poor)";
 }
 
-
-
-
-// Print the Unit Size report
 void printUnitSizeReportFromAsts(list[Declaration] asts) {
-    map[loc, int] unitSizes = calculateUnitSize(asts);
-    int totalUnits = size(unitSizes);
-    real avgLoc = calculateAverageUnitSize(unitSizes);
-    str rating = getUnitSizeRating(avgLoc);
-    
-    // Calculate Risk Profile: percentage of units that exceed a threshold (e.g., 60 LOC)
-    int riskThreshold = 60; 
-    int riskyUnits = 0;
-    for (loc unitLoc <- unitSizes) {
-        if (unitSizes[unitLoc] > riskThreshold) riskyUnits += 1;
-    }
-    real riskPct = (totalUnits > 0) ? (riskyUnits * 100.0) / totalUnits : 0.0;
-    
-    println("\n=== Unit Size Report ===");
-    println("Total Units (Methods/Constructors): <totalUnits>");
-    println("Average Unit Size (LOC): <avgLoc>");
-    println("Risk Profile (<totalUnits> <riskThreshold> LOC): <riskyUnits> (<riskPct>%)");
-    println("SIG Rating: <rating>");
-}
-
-void NEWWWWprintUnitSizeReportFromAsts(list[Declaration] asts) {
     map[loc, int] unitSizes = calculateUnitSize(asts);
     int totalUnits = size(unitSizes);
 
@@ -105,7 +84,7 @@ void NEWWWWprintUnitSizeReportFromAsts(list[Declaration] asts) {
     // Total LOC over all units
     int totalLoc = 0;
 
-    // LOC in units above thresholds (SIG-style)
+    // LOC in units above thresholds (SIG style)
     int locAbove15 = 0;
     int locAbove30 = 0;
     int locAbove60 = 0;
@@ -121,7 +100,7 @@ void NEWWWWprintUnitSizeReportFromAsts(list[Declaration] asts) {
 
     real avgLoc = (totalLoc * 1.0) / totalUnits;
 
-    // Percentages of LOC (SIG-style)
+    // Percentages of LOC (SIG style)
     real pctLocAbove15 = totalLoc > 0 ? (locAbove15 * 100.0) / totalLoc : 0.0;
     real pctLocAbove30 = totalLoc > 0 ? (locAbove30 * 100.0) / totalLoc : 0.0;
     real pctLocAbove60 = totalLoc > 0 ? (locAbove60 * 100.0) / totalLoc : 0.0;
@@ -132,7 +111,7 @@ void NEWWWWprintUnitSizeReportFromAsts(list[Declaration] asts) {
 
     str rating = getUnitSizeRating(avgLoc);
 
-    println("\n=== TESTTTTTTTTTUnit Size Report ===");
+    println("\n===Unit Size Report ===");
     println("Total Units (Methods/Constructors): <totalUnits>");
     println("Total LOC in units: <totalLoc>");
     println("Average Unit Size (LOC): <avgLoc>");
@@ -150,51 +129,31 @@ void NEWWWWprintUnitSizeReportFromAsts(list[Declaration] asts) {
     println("\nSIG-inspired Rating (based on avg LOC): <rating>");
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// ------------------------
+// Unit Complexity Code
+// ------------------------
 // Helper function: Count logical AND (&&) and OR (||) operators
 int countLogicalOperators(\Expression exp) {
     int count = 0;
     
-    // Visit only the condition expression tree
     visit(exp) {
-        // Standard Java Logical AND and OR
         case \conditionalOr(_, _): count += 1; 
         case \conditionalAnd(_, _): count += 1; 
     }
     return count;
 }
 
-// Helper function: Calculate Cyclomatic Complexity (CC) for a single Statement block
+
 int calculateCyclomaticComplexity(Statement impl) {
     int complexity = 1; // Start with 1 for the function/method entry point
     
-    // Visit the statement block (impl) to find decision points
     visit (impl) {
-        // Conditionals: if, while, do/while, for
         case \if(_, _): complexity += 1;
         case \while(_, _): complexity += 1;
         case \do(_, _): complexity += 1;
         case \for(_, _, _, _): complexity += 1;
         case \foreach(_, _, _): complexity += 1;
-        // Logical Operators in Conditions (each operator adds 1 to CC)
+
         case \conditional(_, \Expression cond, _): {
             complexity += countLogicalOperators(cond);
         }
@@ -211,10 +170,8 @@ int calculateCyclomaticComplexity(Statement impl) {
             complexity += countLogicalOperators(cond);
         }
         
-        // Switch statements: each case label is a decision point
         case \switch(\Expression _, _): complexity += 1;
         
-        // Catch blocks in try/catch
         case \catch(_, _): complexity += 1;
     }
     
@@ -222,18 +179,15 @@ int calculateCyclomaticComplexity(Statement impl) {
 }
 
 
-// Main Metric function: Maps unit locations to their Cyclomatic Complexity
 map[loc, int] calculateUnitComplexity(list[Declaration] asts) {
+    // its pretty much the same as unit size, change this later 
     map[loc, int] unitComplexities = ();
     
-    // Visit all method and constructor implementations
     visit(asts) {
-        // Handle methods with a statement body (impl)
         case \method(_, _, _, _, _, _, Statement impl): {
             if (impl.src?) unitComplexities[impl.src] = calculateCyclomaticComplexity(impl);
         }
         
-        // Handle constructors with a statement body (impl)
         case \constructor(_, _, _, _, Statement impl): {
             if (impl.src?) unitComplexities[impl.src] = calculateCyclomaticComplexity(impl);
         }
@@ -242,7 +196,6 @@ map[loc, int] calculateUnitComplexity(list[Declaration] asts) {
     return unitComplexities;
 }
 
-// Calculates the average CC across all units
 real calculateAverageUnitComplexity(map[loc location, int values] unitComplexities) {
     if (size(unitComplexities) == 0) return 0.0;
     
@@ -252,9 +205,7 @@ real calculateAverageUnitComplexity(map[loc location, int values] unitComplexiti
     return (totalCC * 1.0) / totalUnits;
 }
 
-// SIG Maintainability rating for Unit Complexity (Cyclomatic Complexity)
 str getComplexityRating(real avgCC) {
-    // SIG thresholds for CC are based on industry standards
     if (avgCC <= 5.0) return "++ (excellent)";
     if (avgCC <= 10.0) return "+ (good)";
     if (avgCC <= 15.0) return "o (moderate)";
@@ -262,14 +213,13 @@ str getComplexityRating(real avgCC) {
     return "-- (very poor)";
 }
 
-// Print the Unit Complexity report
 void printUnitComplexityReportFromAsts(list[Declaration] asts) {
     map[loc, int] unitComplexities = calculateUnitComplexity(asts);
     int totalUnits = size(unitComplexities);
     real avgCC = calculateAverageUnitComplexity(unitComplexities);
     str rating = getComplexityRating(avgCC);
     
-    // Calculate Risk Profile: percentage of units that exceed a threshold (e.g., CC 15)
+    // Calculate Risk Profile: percentage of units that exceed a threshold 
     int riskThreshold = 15; 
     int riskyUnits = 0;
     for (loc unitLoc <- unitComplexities) {
@@ -285,18 +235,9 @@ void printUnitComplexityReportFromAsts(list[Declaration] asts) {
     println("SIG Rating: <rating>");
 }
 
-
-
-
-
-
-
-
-
-
-
-
+// ------------------------
 // Duplication Code Feature
+// ------------------------
 // Normalise code: remove whitespace, comments, and put in lowercase
 str normalizeCode(list[str] lines) {
     str normalized = "";
@@ -316,7 +257,6 @@ str normalizeCode(list[str] lines) {
 map[str normalized, list[tuple[loc location, int lineCount]] blocks] extractCodeBlocks(list[Declaration] asts, int minLines) {    
     map[str, list[tuple[loc, int]]] blockMap = ();
     visit(asts) {
-        // Extract all method bodies
         case \method(_, _, _, _, _, _, Statement impl): {
             if (impl.src?) {
                 try {
@@ -333,14 +273,11 @@ map[str normalized, list[tuple[loc location, int lineCount]] blocks] extractCode
                     }
                 } 
                 catch: {
-                    // Skip files that can't be read
-               
                     println("Warning: could not read file at <impl.src>");
                 }
             }
         }
         
-        // Extract constructors
         case \constructor(_, _, _, _,  Statement impl): {
             if (impl.src?) {
                 try {
@@ -362,21 +299,18 @@ map[str normalized, list[tuple[loc location, int lineCount]] blocks] extractCode
         }
     }
     
-    // Filter: keep only blocks that appear twice (= duplicates)
+    // Filter: keep only blocks that appear twice 
     return (h : blockMap[h] | h <- blockMap, size(blockMap[h]) >= 2);
 }
 
-
-// Calculate duplication percentage
 tuple[int duplicatedLines, int totalLines, real percentage] calculateDuplication(
     list[Declaration] asts,
     int minLines
     ){
 
     map[str, list[tuple[loc, int]]] duplicates = extractCodeBlocks(asts, minLines);
-    // Count total amount of lines of code
     int totalLines = countPhysicalLocFromAsts(asts);
-    // Count duplicated lines
+
     int duplicatedLines = 0;
     for (normalized <- duplicates) {
         list[tuple[loc location, int lineCount]] blocks = duplicates[normalized];
@@ -393,7 +327,6 @@ tuple[int duplicatedLines, int totalLines, real percentage] calculateDuplication
     return <duplicatedLines, totalLines, percentage>;
 }
 
-// SIG Maintainability rating for duplication
 str getDuplicationRating(real percentage) {
     if (percentage <= 3.0) return "++ (excellent)";
     if (percentage <= 5.0) return "+ (good)";
@@ -402,8 +335,6 @@ str getDuplicationRating(real percentage) {
     return "-- (very poor)";
 }
 
-
-// Print the detailed duplication report
 void printDuplicationReport(list[Declaration] asts, int minLines) {
     map[str, list[tuple[loc, int]]] duplicates = extractCodeBlocks(asts, minLines);
     tuple[int dup, int total, real pct] stats = calculateDuplication(asts, minLines);
@@ -414,10 +345,8 @@ void printDuplicationReport(list[Declaration] asts, int minLines) {
     println("Duplicated LOC: <stats.dup>");
     println("Duplication percentage: <stats.pct>%");
     println("\nNumber of duplicate blocks found: <size(duplicates)>");
-    // SIG rating (based on ISO/IEC 25010 maintainability)
     str rating = getDuplicationRating(stats.pct);
     println("SIG Rating: <rating>");
-    println("\n--- Duplicate Block Details ---");
 }
 
 void printDuplicationReportFromAsts(list[Declaration] asts) {
@@ -426,17 +355,13 @@ void printDuplicationReportFromAsts(list[Declaration] asts) {
 }
 
 
-
-
-
 // Combined report: volume + unit size + unit complexity + duplication
 void printFullQualityReportFromAsts(list[Declaration] asts, str label = "Project") {
     // Volume
     printVolumeReportFromAsts(asts, label);
     
     // Unit Size
-    // oldPrintUnitSizeReportFromAsts(asts);
-    NEWWWWprintUnitSizeReportFromAsts(asts);
+    printUnitSizeReportFromAsts(asts);
 
     // Unit Complexity
     printUnitComplexityReportFromAsts(asts);
