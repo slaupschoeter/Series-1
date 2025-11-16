@@ -24,43 +24,6 @@ list[Declaration] getASTs(loc projectLocation) {
     return asts;
 }
 
-int getNumberOfInterfaces(list[Declaration] asts){
-    int interfaces = 0;
-    visit(asts){
-        case \interface(_, _, _, _, _, _): interfaces += 1;
-    }
-    return interfaces;
-}
-
-
-// Assignments 
-// Series 0
-int getNumberOfForLoops(list[Declaration] asts){
-    int count = 0;
-    visit (asts) {
-        case \foreach(_, _, _): count += 1;
-        case \for(_, _, _, _): count += 1;
-        case \for(_, _, _): count += 1;
-    }
-
-    return count;
-}
-
-tuple[int, list[str]] mostOccurringVariables(list[Declaration] asts){
-    map[str varName, int counts] counter = ();
-    visit (asts) {
-        case \variable(\id(str name), _): counter[name] ? 0 += 1;
-        case \variable(\id(str name), _, _): counter[name] ? 0 += 1;
-        case \fieldAccess(\id(str name)): counter[name] ? 0 += 1;
-        case \fieldAccess(_, \id(str name)): counter[name] ? 0 += 1;
-        case \parameter(_, _, \id(str name), _): counter[name] ? 0 += 1;
-        case \vararg(_, _, \id(str name)): counter[name] ? 0 += 1;
-    }
-
-    int maximum = max(counter.counts);
-    return <maximum, toList(invert(counter)[maximum])>;
-}
-
 // ------------------------
 // Series 1
 // Counting LOC
